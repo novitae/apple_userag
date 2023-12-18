@@ -1,15 +1,15 @@
 from pydantic import BaseModel
 from pathlib import Path
 import json
-from typing import TypedDict
+from typing import TypedDict, Literal
 from datetime import datetime, timedelta, timezone
 import random
+from argparse import ArgumentParser
+import httpx
+import asyncio
+from tqdm.asyncio import tqdm_asyncio
 
-_data_path = Path(__file__).parent / "data.json"
-
-if _data_path.exists() is False:
-    print("Run `python -m apple_usera update`, some files are missing.")
-    exit()
+_data_path = Path(__file__).parent / "data.json"    
 
 def _strip_at_number(string: str) -> str:
     result = ""
@@ -136,8 +136,13 @@ class _DevicesType(TypedDict):
 
 devices: _DevicesType = {}
 
-with open(_data_path, "r") as _read:
-    _content = json.load(_read)
+if _data_path.exists():
+    with open(_data_path, "r") as _read:
+        _content = json.load(_read)
+else:
+    print("Run `python -m apple_usera update`, some files are missing.")
+    _content = []
+    _raw_device, _device_type, _read = None, None, None
 
 for _raw_device in _content:
     _device = AppleDevice(**_raw_device)
@@ -145,8 +150,6 @@ for _raw_device in _content:
     if _device_type not in devices:
         devices[_device_type] = []
     devices[_device_type].append(_device)
-
-del _AppleDeviceList, _DevicesType, _content, _raw_device, _device_type, _read
 
 def available_devices() -> list[str]:
     """Returns the list of device types available."""
@@ -187,3 +190,34 @@ def get_random_non_outdated_devices(device_type: str, days: int = 365) -> AppleD
         AppleDevice: The random non outdated device.
     """
     return random.choice(get_non_outdated_devices(device_type=device_type, days=days))
+
+async def _get_versions(
+    client: httpx.AsyncClient,
+    identifier: str,
+    semaphore: asyncio.Semaphore,
+) -> list:
+    async with semaphore:
+        response = await client.get( f"https://api.ipsw.me/v4/device/{identifier}",
+                                     params={"type": "ipsw"}, )
+    return response.json()
+
+async def _update() -> None:
+    client, semaphore = httpx.AsyncClient(timeout=httpx.Timeout(60)), asyncio.Semaphore(20)
+    devices_data = (await client.get("https://api.ipsw.me/v4/devices")).json()
+    all_versions = await tqdm_asyncio.gather(*[ _get_versions(client, device_data["identifier"], semaphore)
+                                                for device_data in devices_data ])
+    with open(_data_path, "w") as write:
+        json.dump(all_versions, write, indent=4)
+
+def _main() -> None:
+    parser = ArgumentParser()
+    parser.add_argument("action", choices=["update"])
+    args = vars(parser.parse_args())
+
+    action: Literal["update"] = args["action"]
+    if action == "update":
+        asyncio.run(_update())
+    else:
+        parser.error(f'unknown action "{action}"')
+
+del ( _AppleDeviceList, _DevicesType, _content, _raw_device, _device_type, _read )

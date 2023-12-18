@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools >= 61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apple_userag"
+version = "0.1.0"
+description = "A helper to build Apple User-Agent, using the ipsw.me API."
+authors = [{name = "aet"}]
+license = {text = "GPL-3.0"}
+readme = "README.md"
+keywords = ["apple", "user-agent", "parser", "Python"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "pydantic",
+    "tqdm",
+    "httpx"
+]
+
+[project.scripts]
+apple_userag = "apple_userag.__init__:_main"
