@@ -65,6 +65,30 @@ class Firmware(BaseModel):
     signed: bool
     """Is the firmwire still signed ?"""
 
+    def __lt__(self, other: object) -> bool:
+        if self.releasedate is not None and other.releasedate is not None:
+            return self.releasedate < other.releasedate
+        else:
+            return False
+
+    def __le__(self, other: object) -> bool:
+        if self.releasedate is not None and other.releasedate is not None:
+            return self.releasedate <= other.releasedate
+        else:
+            return True
+
+    def __gt__(self, other: object) -> bool:
+        if self.releasedate is not None and other.releasedate is not None:
+            return self.releasedate > other.releasedate
+        else:
+            return False
+
+    def __ge__(self, other: object) -> bool:
+        if self.releasedate is not None and other.releasedate is not None:
+            return self.releasedate >= other.releasedate
+        else:
+            return True
+
 class AppleDevice(BaseModel):
     name: str
     """`iPhone 2G`, `iPhone 4 (GSM)`, `MacBook Pro (M1 Max, 14-inch, 2021)`, ... ."""
